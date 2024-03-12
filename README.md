@@ -34,7 +34,7 @@ implementation("io.ktor:ktor-client-cio-jvm:$ktorVersion")
 ## Usage
 
 ```
-webrpc-gen -schema=example.ridl -target=kotlin-client -out=./example.gen.kt
+webrpc-gen -schema=example.ridl -target=kotlin -client -out=./example.gen.kt
 ```
 
 or 
