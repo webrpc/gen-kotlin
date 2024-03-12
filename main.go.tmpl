@@ -65,13 +65,13 @@
 // {{.WebrpcGenCommand}}
 
 // WebRPC description and code-gen version
-const val WEB_RPC_VERSION = "{{.WebrpcVersion}}"
+const val WEBRPC_VERSION = "{{.WebrpcVersion}}"
 
 // Schema version of your RIDL schema
-const val WEB_RPC_SCHEMA_VERSION = "{{.SchemaVersion}}"
+const val WEBRPC_SCHEMA_VERSION = "{{.SchemaVersion}}"
 
 // Schema hash generated from your RIDL schema
-const val WEB_RPC_SCHEMA_HASH = "{{.SchemaHash}}"
+const val WEBRPC_SCHEMA_HASH = "{{.SchemaHash}}"
 
 {{template "types" dict "Types" .Types "Services" .Services "TypeMap" $typeMap}}
 
