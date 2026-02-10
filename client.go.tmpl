@@ -1,5 +1,6 @@
 {{define "client"}}
 
+{{ $basepath := .BasePath }}
 {{- $typeMap := .TypeMap -}}
 {{- $types := .Types -}}
 
@@ -208,7 +209,7 @@ open class {{.Name}}Client(
     private val httpRequestBuilder: HttpRequestBuilder.() -> Unit = {},
     moshiBuilder: Moshi.Builder = Serializer.moshiBuilder,
 ): WebRpcKtorClient(), {{$service.Name}} {
-    private val baseUrl = baseUrl.normalizeUrl() + "rpc/{{$service.Name}}"
+    private val baseUrl = baseUrl.normalizeUrl() + "{{$basepath}}{{$service.Name}}"
     private val ktorClient by lazy { httpClientBuilder() }
     private val moshi by lazy { moshiBuilder.build() }
 
@@ -236,7 +237,7 @@ open class {{.Name}}Client(
         )
     }
 
-    private fun String.normalizeUrl() = this.takeIf { it.endsWith("/") } ?: "$this/"
+    private fun String.normalizeUrl() = this.trimEnd { it == '/' }
 
     {{- range $i, $method := $service.Methods}}
 

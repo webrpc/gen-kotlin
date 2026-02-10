@@ -2,12 +2,11 @@ webrpc = v1
 
 name = node-ts
 version = v1.0.0
+basepath = /v1
 
-
-enum Kind: uint32
-  - USER
-  - ADMIN
-
+service ExampleService
+  - Ping() => ()
+  - GetUser(userID: uint64) => (code: uint32, user: User)
 
 struct User
   - ID: uint64
@@ -25,11 +24,9 @@ struct User
 
   - createdAt?: timestamp
 
+enum Kind: uint32
+  - USER
+  - ADMIN
 
 struct Page
   - num: uint32
-
-
-service ExampleService
-  - Ping() => ()
-  - GetUser(userID: uint64) => (code: uint32, user: User)
