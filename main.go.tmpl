@@ -76,7 +76,7 @@ const val WEBRPC_SCHEMA_HASH = "{{.SchemaHash}}"
 {{template "types" dict "Types" .Types "Services" .Services "TypeMap" $typeMap}}
 
 {{if $opts.client}}
-  {{- template "client" dict "Types" .Types "Services" .Services "TypeMap" $typeMap}}
+  {{- template "client" dict "BasePath" .BasePath "Types" .Types "Services" .Services "TypeMap" $typeMap}}
   {{- template "clientHelpers" dict "WebrpcErrors" .WebrpcErrors "SchemaErrors" .Errors }}
 {{- end}}
 
