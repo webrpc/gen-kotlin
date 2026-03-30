@@ -20,6 +20,10 @@ enum class {{$type.Name}} {
 }
 {{end -}}
 
+{{- if isAliasType $type }}
+typealias {{$type.Name}} = {{template "type" dict "Type" $type.Type "TypeMap" $typeMap}}
+{{end -}}
+
 {{- if isStructType $type }}
 @JsonClass(generateAdapter = true)
 data class {{$type.Name}}(

@@ -8,6 +8,9 @@ service ExampleService
   - Ping() => ()
   - GetUser(userID: uint64) => (code: uint32, user: User)
 
+type Username: string
+type Age: uint32
+
 struct User
   - ID: uint64
     + json = id
