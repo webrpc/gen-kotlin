@@ -1,26 +1,21 @@
 package io.webrpc.client
 
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
 import kotlinx.coroutines.runBlocking
 
-fun main(args: Array<String>) {
-    val client = ExampleServiceClient(
+fun main() = runBlocking {
+    val client = NodeTsExampleServiceClient(
         baseUrl = "http://localhost:3000",
-        httpClientBuilder = { HttpClient(CIO) },
+        transport = OkHttpWebRpcTransport(),
     )
 
-    runBlocking {
-        println("Sending ping…")
-        client.ping()
-    }
+    println("Sending ping...")
+    client.ping()
 
-    runBlocking {
-        println("Getting user 1…")
-        client.getUser(1UL).let {
-            println(it.toString())
-        }
-    }
+    println("Getting user 1...")
+    val response = client.getUser(
+        NodeTsExampleServiceApi.GetUser.Request(userId = 1UL),
+    )
+    println(response)
 
     println("Done.")
 }

@@ -1,260 +1,154 @@
 {{define "client"}}
 
-{{ $basepath := .BasePath }}
+{{- $basepath := .BasePath -}}
+{{- $schemaName := .SchemaName -}}
+{{- $schemaPrefix := pascalCase $schemaName -}}
 {{- $typeMap := .TypeMap -}}
 {{- $types := .Types -}}
+{{- $reservedTypeNames := dict -}}
+{{- range $_, $type := $types -}}
+    {{- set $reservedTypeNames $type.Name true -}}
+{{- end -}}
+{{- $usedApiNames := dict -}}
+{{- $usedClientNames := dict -}}
 
 {{- if .Services -}}
-// region Client
-{{- range $_, $service := .Services}}
-interface {{$service.Name}} {
-{{- range $i, $method := $service.Methods}}
-    @Throws(WebRpcError::class)
-    suspend fun {{firstLetterToLower $method.Name}}({{template "methodInputs" dict "Method" $method "TypeMap" $typeMap}}){{if gt (len $method.Outputs) 0 }}: {{template "methodOutputsAsObject" dict "Service" $service "Method" $method "TypeMap" $typeMap}}{{end}}
-{{- end}}
-{{range $_, $method := $service.Methods }}
-    {{- if gt (len $method.Inputs) 0 }}
-    data class {{$method.Name}}Request(
+// region Service Metadata
+{{ range $serviceIndex, $service := .Services}}
+{{if gt $serviceIndex 0}}
+
+{{end}}
+{{- $serviceBaseName := ternary (hasPrefix $service.Name $schemaPrefix) $service.Name (printf "%s%s" $schemaPrefix $service.Name) -}}
+{{- $serviceApiState := dict "name" "" "selected" false -}}
+{{- range $_, $candidate := (list (printf "%sApi" $serviceBaseName) (printf "%sServiceApi" $serviceBaseName) (printf "%sWebRpcApi" $serviceBaseName) (printf "%sGeneratedRpcApi" $serviceBaseName) (printf "%sGeneratedRpcApi%d" $serviceBaseName $serviceIndex)) -}}
+    {{- if not (get $serviceApiState "selected") -}}
+        {{- $collisionState := dict "collision" false -}}
+        {{- if or (exists $reservedTypeNames $candidate) (exists $usedApiNames $candidate) -}}
+            {{- set $collisionState "collision" true -}}
+        {{- end -}}
+        {{- if not (get $collisionState "collision") -}}
+            {{- set $serviceApiState "name" $candidate -}}
+            {{- set $serviceApiState "selected" true -}}
+            {{- set $usedApiNames $candidate true -}}
+        {{- end -}}
+    {{- end -}}
+{{- end }}
+{{- $serviceApiName := get $serviceApiState "name" -}}
+{{- $serviceClientState := dict "name" "" "selected" false -}}
+{{- range $_, $candidate := (list (printf "%sClient" $serviceBaseName) (printf "%sServiceClient" $serviceBaseName) (printf "%sWebRpcClient" $serviceBaseName) (printf "%sGeneratedRpcClient" $serviceBaseName) (printf "%sGeneratedRpcClient%d" $serviceBaseName $serviceIndex)) -}}
+    {{- if not (get $serviceClientState "selected") -}}
+        {{- $collisionState := dict "collision" false -}}
+        {{- if or (exists $reservedTypeNames $candidate) (exists $usedClientNames $candidate) -}}
+            {{- set $collisionState "collision" true -}}
+        {{- end -}}
+        {{- if not (get $collisionState "collision") -}}
+            {{- set $serviceClientState "name" $candidate -}}
+            {{- set $serviceClientState "selected" true -}}
+            {{- set $usedClientNames $candidate true -}}
+        {{- end -}}
+    {{- end -}}
+{{- end }}
+{{- $serviceClientName := get $serviceClientState "name" -}}
+object {{$serviceApiName}} {
+    const val basePath: String = "{{$basepath}}{{$service.Name}}"
+{{- range $_, $method := $service.Methods}}
+
+    object {{$method.Name}} {
+        const val path: String = "/{{$method.Name}}"
+        const val urlPath: String = "{{$basepath}}{{$service.Name}}/{{$method.Name}}"
+        {{- if and (not $method.Succinct) (gt (len $method.Inputs) 0) }}
+
+        @Serializable
+        data class Request(
             {{- range $_, $field := $method.Inputs}}
                 {{- $isExportable := true -}}
                 {{- range $meta := $field.Meta -}}
                     {{- if exists $meta "json" -}}
                         {{- if eq (printf "%v" (get $meta "json")) "-" -}}
-                            {{- $isExportable = false}}
+                            {{- $isExportable = false -}}
                         {{- end -}}
                     {{- end -}}
                 {{- end }}
-
                 {{- if $isExportable }}
-        @Json(name = "{{template "codingKey" dict "Field" .}}") val {{template "fieldName" dict "Field" .}}: {{template "type" dict "Type" $field.Type "TypeMap" $typeMap}}{{if .Optional}}?{{end}},
+            @SerialName("{{template "codingKey" dict "Field" $field}}")
+            val {{template "fieldName" dict "Field" $field}}: {{template "type" dict "Type" $field.Type "TypeMap" $typeMap}}{{if $field.Optional}}? = null{{end}},
                 {{- end -}}
             {{- end}}
-    )
-{{ end -}}
-{{- if gt (len $method.Outputs) 0 }}
-    data class {{$method.Name}}Response(
-{{- range $_, $field := $method.Outputs}}
-    {{- $isExportable := true -}}
-    {{- range $meta := $field.Meta -}}
-        {{- if exists $meta "json" -}}
-            {{- if eq (printf "%v" (get $meta "json")) "-" -}}
-                {{- $isExportable = false}}
-            {{- end -}}
-        {{- end -}}
-    {{- end }}
-    {{- if $isExportable }}
-        @Json(name = "{{template "codingKey" dict "Field" .}}") val {{template "fieldName" dict "Field" .}}: {{template "type" dict "Type" $field.Type "TypeMap" $typeMap}}{{if .Optional}}?{{end}},
-    {{- end -}}
-{{- end}}
-    )
-{{end -}}
-{{end -}}
-}
-{{ end }}
-open class WebRpcKtorClient {
-    @Suppress("RethrowCaughtException")
-    @Throws(WebRpcError::class)
-    protected suspend inline fun <reified I, reified O> request(
-        client: HttpClient,
-        baseUrl: String,
-        method: String,
-        body: I?,
-        serialize: (I) -> String,
-        deserialize: (String) -> O,
-        deserializeError: (String) -> WebRpcError,
-        extraHttpBuilder: HttpRequestBuilder.() -> Unit = {},
-    ): O {
-        return try {
-            val response = client.post(baseUrl) {
-                url {
-                    appendPathSegments(method)
-                }
-                contentType(ContentType.Application.Json)
-                setBody(body?.let { serialize(body) } ?: "{}")
-                extraHttpBuilder()
-            }
+        )
+        {{- end }}
+        {{- if and (not $method.Succinct) (gt (len $method.Outputs) 0) }}
 
-            val responseBody = response.bodyAsText(fallbackCharset = Charsets.UTF_8)
-
-            if (response.status.isSuccess()) {
-
-                if (O::class.java != Unit::class.java) {
-                    deserialize(responseBody)
-                } else Unit as O
-
-            } else {
-                throw deserializeError(responseBody)
-            }
-
-        } catch (e: CancellationException) {
-            // CancellationException must be propagated to ensure correct cancellation of coroutines
-            throw e
-        } catch (e: WebRpcError) {
-            // Propagate original WebRpcError out of the function
-            throw e
-        } catch (e: Throwable) {
-            throw createUnknownError(exception = e)
-        }
-    }
-
-    protected fun createUnknownError(exception: Throwable? = null) = WebRpcError(
-        error = "Unknown error",
-        code = ErrorKind.UNKNOWN.code,
-        message = exception?.message ?: "",
-        causeString = exception?.cause?.toString() ?: "",
-        status = ErrorKind.UNKNOWN.code,
-        errorKind = ErrorKind.UNKNOWN,
-        cause = exception,
-    )
-}
-
-private object Serializer {
-    @JvmStatic
-    val moshiBuilder: Moshi.Builder = SerializerHelper.addEnumUnknownDefaultCase(Moshi.Builder())
-}
-
-private object SerializerHelper {
-    fun addEnumUnknownDefaultCase(moshiBuilder: Moshi.Builder): Moshi.Builder {
-        return moshiBuilder
-            {{- if $types -}}
-                {{range $_i, $type := $types -}}
-                    {{if isEnumType $type }}
-            .add(
-                {{$type.Name}}::class.java,
-                EnumJsonAdapter.create({{$type.Name}}::class.java).withUnknownFallback({{$type.Name}}.UNKNOWN_DEFAULT).nullSafe(),
-            )
+        @Serializable
+        data class Response(
+            {{- range $_, $field := $method.Outputs}}
+                {{- $isExportable := true -}}
+                {{- range $meta := $field.Meta -}}
+                    {{- if exists $meta "json" -}}
+                        {{- if eq (printf "%v" (get $meta "json")) "-" -}}
+                            {{- $isExportable = false -}}
+                        {{- end -}}
                     {{- end -}}
+                {{- end }}
+                {{- if $isExportable }}
+            @SerialName("{{template "codingKey" dict "Field" $field}}")
+            val {{template "fieldName" dict "Field" $field}}: {{template "type" dict "Type" $field.Type "TypeMap" $typeMap}}{{if $field.Optional}}? = null{{end}},
                 {{- end -}}
-            {{- end -}}
-            .add(UnsignedNumberJsonAdapter.Factory)
-            .add(IsoDateAdapter())
-            .addLast(KotlinJsonAdapterFactory())
-    }
-}
-
-private class UnsignedNumberJsonAdapter<UnsignedT : Any> private constructor(
-    private val toUnsignedT: ULong.() -> UnsignedT,
-) : JsonAdapter<UnsignedT>() {
-    override fun toJson(writer: JsonWriter, value: UnsignedT?) {
-        when (value) {
-            null -> writer.nullValue()
-            else -> writer.valueSink().use { it.writeUtf8(value.toString()) }
-        }
-    }
-
-    override fun fromJson(reader: JsonReader): UnsignedT? = when (val next = reader.peek()) {
-        Token.NUMBER -> {
-            try {
-                reader.nextString().toULong().toUnsignedT()
-            } catch (numberFormatException: NumberFormatException) {
-                throw JsonDataException(
-                    "${numberFormatException.message} for unsigned number at ${reader.path}"
-                )
-            }
-        }
-
-        Token.NULL -> reader.nextNull()
-        else -> throw JsonDataException(
-            "Expected an unsigned number but was ${reader.readJsonValue()}, " +
-                    "a $next, at path ${reader.path}",
-            IllegalArgumentException(next.name)
+            {{- end}}
         )
+        {{- end }}
+
+        {{- if eq (len $method.Inputs) 0 }}
+        @Suppress("UNUSED_PARAMETER")
+        {{- end }}
+        fun encodeRequest({{if gt (len $method.Inputs) 0}}request: {{if $method.Succinct}}{{(index $method.Inputs 0).Type}}{{else}}Request{{end}}, {{end}}json: Json = WebRpcJson): String {
+            {{- if eq (len $method.Inputs) 0 }}
+            return "{}"
+            {{- else }}
+            return json.encodeToString(request)
+            {{- end }}
+        }
+        {{- if eq (len $method.Outputs) 0 }}
+
+        @Suppress("UNUSED_PARAMETER")
+        fun decodeResponse(body: String, json: Json = WebRpcJson) {
+            return
+        }
+        {{- else }}
+
+        fun decodeResponse(body: String, json: Json = WebRpcJson): {{if $method.Succinct}}{{(index $method.Outputs 0).Type}}{{else}}Response{{end}} {
+            return json.decodeFromString(body)
+        }
+        {{- end }}
     }
-
-    object Factory : JsonAdapter.Factory {
-        private val unsignedTypesMapperMap: Map<Class<*>, ULong.() -> Any> = mapOf(
-            ULong::class.java to { this },
-            UInt::class.java to {
-                if (this > UInt.MAX_VALUE) throw NumberFormatException("Invalid number format: '$this'") else toUInt()
-            },
-            UShort::class.java to {
-                if (this > UShort.MAX_VALUE) throw NumberFormatException("Invalid number format: '$this'") else toUShort()
-            },
-            UByte::class.java to {
-                if (this > UByte.MAX_VALUE) throw NumberFormatException("Invalid number format: '$this'") else toUByte()
-            }
-        )
-
-        private val Type.isUnsignedType: Boolean
-            get() = unsignedTypesMapperMap.keys.contains(rawType)
-
-        private val Type.mapper: ULong.() -> Any
-            get() = unsignedTypesMapperMap[rawType]!!
-
-        override fun create(
-            type: Type,
-            annotations: Set<Annotation>,
-            moshi: Moshi,
-        ): JsonAdapter<*>? = if (type.isUnsignedType) UnsignedNumberJsonAdapter(type.mapper) else null
-    }
+{{- end}}
 }
 
-class IsoDateAdapter {
-    @ToJson
-    fun toJson(value: OffsetDateTime): String {
-        return value.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-    }
+class {{$serviceClientName}}(
+    private val baseUrl: String,
+    private val transport: WebRpcTransport,
+    private val json: Json = WebRpcJson,
+    private val headers: () -> Map<String, String> = { emptyMap() },
+) {
+    {{- range $_, $method := $service.Methods}}
 
-    @FromJson
-    fun fromJson(value: String): OffsetDateTime {
-        return OffsetDateTime.parse(value, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-    }
-}
-
-{{- range $service := .Services}}
-    
-open class {{.Name}}Client(
-    baseUrl: String,
-    httpClientBuilder: () -> HttpClient,
-    private val httpRequestBuilder: HttpRequestBuilder.() -> Unit = {},
-    moshiBuilder: Moshi.Builder = Serializer.moshiBuilder,
-): WebRpcKtorClient(), {{$service.Name}} {
-    private val baseUrl = baseUrl.normalizeUrl() + "{{$basepath}}{{$service.Name}}"
-    private val ktorClient by lazy { httpClientBuilder() }
-    private val moshi by lazy { moshiBuilder.build() }
-
-    @Throws(WebRpcError::class)
-    private suspend inline fun <reified O> request(method: String, body: Any? = null): O {
-        return request(
-            client = ktorClient,
+    @Throws(WebRpcError::class, WebRpcTransportException::class)
+    suspend fun {{firstLetterToLower $method.Name}}({{template "methodInputs" dict "Method" $method "ServiceApiName" $serviceApiName}}){{if gt (len $method.Outputs) 0}}: {{template "methodOutputs" dict "Method" $method "ServiceApiName" $serviceApiName}}{{end}} {
+        return executeWebRpc(
             baseUrl = baseUrl,
-            method = method,
-            body = body,
-            serialize = this::toJson,
-            deserialize = { json -> fromJson(json, O::class.java) },
-            deserializeError = { json -> fromJson(json, WebRpcError::class.java) },
-            extraHttpBuilder = httpRequestBuilder,
+            urlPath = {{$serviceApiName}}.{{$method.Name}}.urlPath,
+            body = {{$serviceApiName}}.{{$method.Name}}.encodeRequest({{if gt (len $method.Inputs) 0}}request, {{end}}json),
+            transport = transport,
+            headers = headers(),
+            json = json,
+            decodeSuccess = { body, decodeJson ->
+                {{$serviceApiName}}.{{$method.Name}}.decodeResponse(body, decodeJson)
+            },
         )
-    }
-
-    private fun toJson(obj: Any): String {
-        return moshi.adapter(obj.javaClass).toJson(obj)
-    }
-
-    private fun <T> fromJson(json: String, type: Type): T {
-        return moshi.adapter<T>(type).fromJson(json) ?: throw createUnknownError(
-            ParseException("Cannot parse JSON body.", cause = IllegalStateException(json))
-        )
-    }
-
-    private fun String.normalizeUrl() = this.trimEnd { it == '/' }
-
-    {{- range $i, $method := $service.Methods}}
-
-    @Throws(WebRpcError::class)
-    override suspend fun {{firstLetterToLower $method.Name}}({{template "methodInputs" dict "Method" $method "TypeMap" $typeMap}}){{if gt (len $method.Outputs) 0 }}: {{template "methodOutputsAsObject" dict "Service" $service "Method" $method "TypeMap" $typeMap}}{{end}} {
-        {{if gt (len $method.Outputs) 0 }}return {{end}}request<{{template "methodOutputs" dict "Service" $service "Method" $method "TypeMap" $typeMap}}>(
-            method = "{{$method.Name}}",
-            {{- if gt (len $method.Inputs) 0 }}
-            body = {{$service.Name}}.{{$method.Name}}Request(
-                {{ range $i, $input := $method.Inputs }}{{camelCase $input.Name}} = {{camelCase $input.Name}},{{ end }}
-            ){{ end }}
-        ){{ if eq (len $method.Outputs) 1 }}.{{ (index $method.Outputs 0).Name }}{{end}}
     }
     {{- end}}
-} 
-{{end -}}
-{{end -}}
+}
+{{ end }}
 // endregion
+{{- end}}
 
 {{end}}

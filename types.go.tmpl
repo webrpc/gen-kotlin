@@ -2,30 +2,49 @@
 
 {{- $typeMap := .TypeMap -}}
 {{- $types := .Types -}}
-{{- $services := .Services -}}
 
 // region Types
+{{if $types}}
+{{range $_i, $type := $types}}{{if gt $_i 0}}
 
-{{- if $types -}}
-{{range $_i, $type := $types -}}
-{{if isEnumType $type }}
-@JsonClass(generateAdapter = true)
-enum class {{$type.Name}} {
+{{end}}{{if isEnumType $type}}
+@Serializable(with = {{$type.Name}}Serializer::class)
+enum class {{$type.Name}}(val wireValue: String) {
 {{- range $_, $field := $type.Fields}}
-    @Json(name = "{{$field.Name}}")
-    {{toUpper (snakeCase $field.Name)}},
+    {{$field.Name}}("{{$field.Name}}"),
 {{- end}}
-    @Json(name = "UNKNOWN_DEFAULT")
-    UNKNOWN_DEFAULT,
+    UNKNOWN_DEFAULT("UNKNOWN_DEFAULT");
+
+    companion object {
+        fun fromWireValue(value: String): {{$type.Name}} {
+            return values().find { it.wireValue == value } ?: UNKNOWN_DEFAULT
+        }
+    }
 }
-{{end -}}
 
-{{- if isAliasType $type }}
+object {{$type.Name}}Serializer : KSerializer<{{$type.Name}}> {
+    override val descriptor: SerialDescriptor =
+        String.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: {{$type.Name}}) {
+        encoder.encodeSerializableValue(
+            String.serializer(),
+            value.wireValue,
+        )
+    }
+
+    override fun deserialize(decoder: Decoder): {{$type.Name}} {
+        return {{$type.Name}}.fromWireValue(
+            decoder.decodeSerializableValue(
+                String.serializer(),
+            ),
+        )
+    }
+}
+{{else if isAliasType $type}}
 typealias {{$type.Name}} = {{template "type" dict "Type" $type.Type "TypeMap" $typeMap}}
-{{end -}}
-
-{{- if isStructType $type }}
-@JsonClass(generateAdapter = true)
+{{else if isStructType $type}}
+@Serializable
 data class {{$type.Name}}(
     {{- range $_, $field := $type.Fields}}
 
@@ -39,13 +58,13 @@ data class {{$type.Name}}(
     {{- end }}
 
     {{- if $isExportable }}
-    @Json(name = "{{template "codingKey" dict "Field" .}}") val {{template "fieldName" dict "Field" .}}: {{template "type" dict "Type" $field.Type "TypeMap" $typeMap}}{{if .Optional}}?{{end}},
+    @SerialName("{{template "codingKey" dict "Field" .}}")
+    val {{template "fieldName" dict "Field" .}}: {{template "type" dict "Type" $field.Type "TypeMap" $typeMap}}{{if .Optional}}? = null{{end}},
     {{- end -}}
     {{- end}}
 )
-{{end -}}
-{{end -}}
-{{end -}}
+{{end}}{{end}}
+{{end}}
 
 // endregion
 {{end}}

@@ -4,20 +4,27 @@
 
 package {{ $opts.packageName }}
 
-import com.squareup.moshi.*
-import java.time.OffsetDateTime
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 {{if $opts.client }}
-import com.squareup.moshi.JsonReader.Token
-import com.squareup.moshi.adapters.EnumJsonAdapter
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import java.time.format.DateTimeFormatter
-import io.ktor.client.*
-import io.ktor.client.plugins.logging.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.http.parsing.*
-import java.lang.reflect.Type
-import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CancellationException
+import java.io.IOException
+    {{- if $opts.okhttpTransport }}
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+    {{- end}}
 {{- end}}
 {{end}}

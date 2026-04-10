@@ -1,14 +1,14 @@
 import io.webrpc.client.*
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import kotlinx.serialization.json.JsonPrimitive
 
 class TestApiClientTest {
     private val client = TestApiClient(
         baseUrl = "http://localhost:9988",
-        httpClientBuilder = { HttpClient(CIO) },
+        transport = OkHttpWebRpcTransport(),
     )
 
     @Test
@@ -20,28 +20,29 @@ class TestApiClientTest {
 
     @Test
     fun `Test GetError`() {
-        runBlocking {
-            try {
+        val error = assertThrows(WebRpcError::class.java) {
+            runBlocking {
                 client.getError()
-            } catch (e: WebRpcError) {
-                assertEquals(
-                    WebRpcError(
-                        code = ErrorKind.WEBRPC_ENDPOINT.code,
-                        error = "WebrpcEndpoint",
-                        message = "endpoint error",
-                        causeString = "internal error",
-                        status = 400
-                    ), e
-                )
             }
         }
+
+        assertEquals(
+            WebRpcError(
+                code = ErrorKind.WEBRPC_ENDPOINT.code,
+                error = "WebrpcEndpoint",
+                message = "endpoint error",
+                causeString = "internal error",
+                status = 400
+            ), error
+        )
     }
 
     @Test
     fun `Test GetOne`() {
         runBlocking {
             assertEquals(
-                simple, client.getOne()
+                TestApiApi.GetOne.Response(one = simple),
+                client.getOne(),
             )
         }
     }
@@ -50,7 +51,7 @@ class TestApiClientTest {
     fun `Test SendOne`() {
         runBlocking {
             client.sendOne(
-                one = simple,
+                request = TestApiApi.SendOne.Request(one = simple),
             )
         }
     }
@@ -59,7 +60,8 @@ class TestApiClientTest {
     fun `Test GetMulti`() {
         runBlocking {
             assertEquals(
-                multi, client.getMulti()
+                multi,
+                client.getMulti(),
             )
         }
     }
@@ -68,9 +70,11 @@ class TestApiClientTest {
     fun `Test SendMulti`() {
         runBlocking {
             client.sendMulti(
-                one = multi.one,
-                two = multi.two,
-                three = multi.three,
+                request = TestApiApi.SendMulti.Request(
+                    one = multi.one,
+                    two = multi.two,
+                    three = multi.three,
+                ),
             )
         }
     }
@@ -78,21 +82,28 @@ class TestApiClientTest {
     @Test
     fun `Test GetComplex`() {
         runBlocking {
-            assertEquals(complex, client.getComplex())
+            assertEquals(
+                TestApiApi.GetComplex.Response(complex = complex),
+                client.getComplex(),
+            )
         }
     }
 
     @Test
     fun `Test SendComplex`() {
         runBlocking {
-            client.sendComplex(complex = complex)
+            client.sendComplex(
+                request = TestApiApi.SendComplex.Request(complex = complex),
+            )
         }
     }
 
     @Test
     fun `Test GetSchemaError`() {
         runBlocking {
-            client.getSchemaError(code = -999)
+            client.getSchemaError(
+                request = TestApiApi.GetSchemaError.Request(code = -999),
+            )
         }
     }
 
@@ -100,7 +111,7 @@ class TestApiClientTest {
         private val simple = Simple(
             id = 1, name = "one"
         )
-        private val multi = TestApi.GetMultiResponse(
+        private val multi = TestApiApi.GetMulti.Response(
             one = Simple(
                 id = 1, name = "one"
             ), two = Simple(
@@ -110,7 +121,7 @@ class TestApiClientTest {
             )
         )
         private val complex = Complex(
-            meta = mapOf("1" to "23", "2" to 24.0),
+            meta = mapOf("1" to JsonPrimitive("23"), "2" to JsonPrimitive(24)),
             metaNestedExample = mapOf(
                 "1" to mapOf(
                     "2" to 1U
@@ -137,7 +148,7 @@ class TestApiClientTest {
             user = User(
                 id = 1UL, username = "John-Doe", role = "admin"
             ),
-            enum = Status.AVAILABLE
+            status = Status.AVAILABLE
         )
     }
 

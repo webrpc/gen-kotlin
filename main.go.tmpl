@@ -4,6 +4,7 @@
 {{- $opts := dict -}}
 {{- set $opts "client" (ternary (in .Opts.client "" "true") true false) -}}
 {{- set $opts "server" (ternary (in .Opts.server "" "true") true false) -}}
+{{- set $opts "okhttpTransport" (ternary (in .Opts.okhttpTransport "" "true") true false) -}}
 
 {{- /* Allow to pass custom package name. */ -}}
 {{- if (exists .Opts "packageName") -}}
@@ -37,11 +38,11 @@
   {{- exit 1 -}}
 {{- end -}}
 
-{{- /* Map webrpc core types to JS. */ -}}
+{{- /* Map webrpc core types to Kotlin. */ -}}
 {{- $typeMap := dict }}
-{{- set $typeMap "null" "null" -}}
-{{- set $typeMap "any" "Any" -}}
-{{- set $typeMap "byte" "String" -}}
+{{- set $typeMap "null" "JsonElement" -}}
+{{- set $typeMap "any" "JsonElement" -}}
+{{- set $typeMap "byte" "UByte" -}}
 {{- set $typeMap "bool" "Boolean" -}}
 {{- set $typeMap "uint" "UInt" -}}
 {{- set $typeMap "uint8" "UByte" -}}
@@ -56,7 +57,7 @@
 {{- set $typeMap "float32" "Float" -}}
 {{- set $typeMap "float64" "Double" -}}
 {{- set $typeMap "string" "String" -}}
-{{- set $typeMap "timestamp" "OffsetDateTime" -}}
+{{- set $typeMap "timestamp" "String" -}}
 {{template "imports" dict "Opts" $opts}}
 // {{.SchemaName}} {{.SchemaVersion}} {{.SchemaHash}}
 // --
@@ -76,8 +77,8 @@ const val WEBRPC_SCHEMA_HASH = "{{.SchemaHash}}"
 {{template "types" dict "Types" .Types "Services" .Services "TypeMap" $typeMap}}
 
 {{if $opts.client}}
-  {{- template "client" dict "BasePath" .BasePath "Types" .Types "Services" .Services "TypeMap" $typeMap}}
-  {{- template "clientHelpers" dict "WebrpcErrors" .WebrpcErrors "SchemaErrors" .Errors }}
+  {{- template "clientHelpers" dict "WebrpcErrors" .WebrpcErrors "SchemaErrors" .Errors "Opts" $opts }}
+  {{- template "client" dict "BasePath" .BasePath "SchemaName" .SchemaName "Types" .Types "Services" .Services "TypeMap" $typeMap}}
 {{- end}}
 
 {{- end}}

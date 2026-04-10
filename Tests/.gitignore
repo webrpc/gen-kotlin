@@ -1,5 +1,6 @@
 test.ridl
 src/main/kotlin/TestApiClient.kt
+local.properties
 
 # Created by https://www.toptal.com/developers/gitignore/api/intellij,macos,windows,linux,visualstudiocode,gradle
 # Edit at https://www.toptal.com/developers/gitignore?templates=intellij,macos,windows,linux,visualstudiocode,gradle

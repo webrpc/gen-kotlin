@@ -8,10 +8,10 @@ bootstrap:
 generate: generate-server generate-client
 
 generate-server: bootstrap
-	webrpc-gen -schema=service.ridl -target=typescript -server -out=./server/server.gen.ts
+	go -C ../../tools tool webrpc-gen -schema=../_examples/ClientExample/service.ridl -target=typescript -server -out=../_examples/ClientExample/server/server.gen.ts
 
 generate-client:
-	webrpc-gen -schema=service.ridl -target=../../ -client -out=client/src/main/kotlin/ExampleServiceClient.kt
+	go -C ../../tools tool webrpc-gen -schema=../_examples/ClientExample/service.ridl -target=.. -client -okhttpTransport=true -out=../_examples/ClientExample/client/src/main/kotlin/ExampleServiceClient.kt
 	cd client/ && ./gradlew build --no-daemon
 
 run-server:

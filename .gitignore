@@ -182,6 +182,9 @@ Temporary Items
 .history
 .ionide
 
+# Repo-local Gradle home used by generator tests
+.gradle-test-home/
+
 ### Windows ###
 # Windows thumbnail cache files
 Thumbs.db
