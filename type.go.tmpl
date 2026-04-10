@@ -9,8 +9,12 @@
 
 {{- else if isListType $type -}}
 
-    List<{{template "type" dict "Type" (listElemType $type) "TypeMap" $typeMap}}>
-
+    {{- $elemType := listElemType $type -}}
+    {{- if and (isCoreType $elemType) (eq (printf "%v" $elemType) "byte") -}}
+        String
+    {{- else -}}
+        List<{{template "type" dict "Type" $elemType "TypeMap" $typeMap}}>
+    {{- end -}}
 
 {{- else if isCoreType $type -}}
 

@@ -1,5 +1,6 @@
 # Created by https://www.toptal.com/developers/gitignore/api/intellij,macos,windows,linux,visualstudiocode,gradle
 # Edit at https://www.toptal.com/developers/gitignore?templates=intellij,macos,windows,linux,visualstudiocode,gradle
+local.properties
 
 ### Intellij ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider

@@ -13,15 +13,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install webrpc-gen
-        run: |
-          curl -o ./webrpc-gen -fLJO https://github.com/webrpc/webrpc/releases/download/v0.37.0/webrpc-gen.linux-amd64
-          chmod +x ./webrpc-gen
-          echo $PWD >> $GITHUB_PATH
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/go.mod
 
       - name: Regenerate examples
         run: |
-          cd _examples/ClientExample
-          webrpc-gen -schema=service.ridl -target=../../ -client -out=client/src/main/kotlin/ExampleServiceClient.kt
+          go -C tools tool webrpc-gen -schema=../_examples/ClientExample/service.ridl -target=.. -client -okhttpTransport=true -out=../_examples/ClientExample/client/src/main/kotlin/ExampleServiceClient.kt
       - name: Git diff of regenerated files
         run: cd _examples && make diff
+
+      - name: Run generator unit tests
+        run: go test ./...
+
+      - name: Run generated client tests
+        run: cd Tests && ./RunTests.sh
+
+      - name: Compile example client
+        run: cd _examples/ClientExample/client && ./gradlew --no-daemon compileKotlin
