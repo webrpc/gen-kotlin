@@ -276,6 +276,7 @@ fun decodeWebRpcError(
 // endregion
 
 // region Service Metadata
+
 object NodeTsExampleServiceApi {
     const val basePath: String = "/v1/ExampleService"
 
@@ -357,5 +358,6 @@ class NodeTsExampleServiceClient(
         )
     }
 }
+
 // endregion
 
