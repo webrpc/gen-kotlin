@@ -5,39 +5,46 @@
 {{- $schemaPrefix := pascalCase $schemaName -}}
 {{- $typeMap := .TypeMap -}}
 {{- $types := .Types -}}
+{{- $reservedTypeNames := dict -}}
+{{- range $_, $type := $types -}}
+    {{- set $reservedTypeNames $type.Name true -}}
+{{- end -}}
+{{- $usedApiNames := dict -}}
+{{- $usedClientNames := dict -}}
 
 {{- if .Services -}}
 // region Service Metadata
-{{ range $_, $service := .Services}}
+{{ range $serviceIndex, $service := .Services}}
+{{if gt $serviceIndex 0}}
+
+{{end}}
 {{- $serviceBaseName := ternary (hasPrefix $service.Name $schemaPrefix) $service.Name (printf "%s%s" $schemaPrefix $service.Name) -}}
 {{- $serviceApiState := dict "name" "" "selected" false -}}
-{{- range $_, $candidate := (list (printf "%sApi" $serviceBaseName) (printf "%sServiceApi" $serviceBaseName) (printf "%sWebRpcApi" $serviceBaseName) (printf "%sGeneratedRpcApi" $serviceBaseName)) -}}
+{{- range $_, $candidate := (list (printf "%sApi" $serviceBaseName) (printf "%sServiceApi" $serviceBaseName) (printf "%sWebRpcApi" $serviceBaseName) (printf "%sGeneratedRpcApi" $serviceBaseName) (printf "%sGeneratedRpcApi%d" $serviceBaseName $serviceIndex)) -}}
     {{- if not (get $serviceApiState "selected") -}}
         {{- $collisionState := dict "collision" false -}}
-        {{- range $_, $type := $types -}}
-            {{- if eq $type.Name $candidate -}}
-                {{- set $collisionState "collision" true -}}
-            {{- end -}}
+        {{- if or (exists $reservedTypeNames $candidate) (exists $usedApiNames $candidate) -}}
+            {{- set $collisionState "collision" true -}}
         {{- end -}}
         {{- if not (get $collisionState "collision") -}}
             {{- set $serviceApiState "name" $candidate -}}
             {{- set $serviceApiState "selected" true -}}
+            {{- set $usedApiNames $candidate true -}}
         {{- end -}}
     {{- end -}}
 {{- end }}
 {{- $serviceApiName := get $serviceApiState "name" -}}
 {{- $serviceClientState := dict "name" "" "selected" false -}}
-{{- range $_, $candidate := (list (printf "%sClient" $serviceBaseName) (printf "%sServiceClient" $serviceBaseName) (printf "%sWebRpcClient" $serviceBaseName) (printf "%sGeneratedRpcClient" $serviceBaseName)) -}}
+{{- range $_, $candidate := (list (printf "%sClient" $serviceBaseName) (printf "%sServiceClient" $serviceBaseName) (printf "%sWebRpcClient" $serviceBaseName) (printf "%sGeneratedRpcClient" $serviceBaseName) (printf "%sGeneratedRpcClient%d" $serviceBaseName $serviceIndex)) -}}
     {{- if not (get $serviceClientState "selected") -}}
         {{- $collisionState := dict "collision" false -}}
-        {{- range $_, $type := $types -}}
-            {{- if eq $type.Name $candidate -}}
-                {{- set $collisionState "collision" true -}}
-            {{- end -}}
+        {{- if or (exists $reservedTypeNames $candidate) (exists $usedClientNames $candidate) -}}
+            {{- set $collisionState "collision" true -}}
         {{- end -}}
         {{- if not (get $collisionState "collision") -}}
             {{- set $serviceClientState "name" $candidate -}}
             {{- set $serviceClientState "selected" true -}}
+            {{- set $usedClientNames $candidate true -}}
         {{- end -}}
     {{- end -}}
 {{- end }}
@@ -140,7 +147,7 @@ class {{$serviceClientName}}(
     }
     {{- end}}
 }
-{{- end}}
+{{ end }}
 // endregion
 {{- end}}
 

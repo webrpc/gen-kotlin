@@ -279,6 +279,69 @@ service TestApi
 	requireNotContains(t, testOutput, "TestTestApi")
 }
 
+func TestMultiServiceGenerationSeparatesTopLevelDeclarations(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = Foo
+version = v1.0.0
+basepath = /rpc
+
+service Bar
+  - Ping()
+
+service Baz
+  - Pong()
+`
+
+	output := generateKotlin(t, schema)
+	requireContains(t, output, "object FooBarApi")
+	requireContains(t, output, "class FooBarClient(")
+	requireContains(t, output, "object FooBazApi")
+	requireContains(t, output, "class FooBazClient(")
+	requireNotContains(t, output, "}object ")
+
+	project := writeGradleProject(t, "multi-service-formatting", map[string]string{
+		"src/main/kotlin/FooClient.kt": output,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "compileKotlin")
+}
+
+func TestCrossServiceSchemaAwareNameCollisionGeneration(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = Foo
+version = v1.0.0
+basepath = /rpc
+
+service Bar
+  - Ping()
+
+service FooBar
+  - Pong()
+`
+
+	output := generateKotlin(t, schema)
+	requireContains(t, output, "object FooBarApi")
+	requireContains(t, output, "class FooBarClient(")
+	requireContains(t, output, "object FooBarServiceApi")
+	requireContains(t, output, "class FooBarServiceClient(")
+
+	project := writeGradleProject(t, "multi-service-collision", map[string]string{
+		"src/main/kotlin/FooClient.kt": output,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "compileKotlin")
+}
+
 type gradleDeps struct {
 	withCoroutines    bool
 	withSerialization bool
