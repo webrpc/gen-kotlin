@@ -49,11 +49,12 @@ dependencies {
 
 Generated output also exposes low-level method helpers for custom flows:
 
-- `ServiceApi.basePath`
-- `ServiceApi.Method.path`
-- `ServiceApi.Method.urlPath`
-- `ServiceApi.Method.encodeRequest(...)`
-- `ServiceApi.Method.decodeResponse(...)`
+- schema-aware service symbols, for example `WaasWalletApi` / `WaasWalletClient`
+- `SchemaServiceApi.basePath`
+- `SchemaServiceApi.Method.path`
+- `SchemaServiceApi.Method.urlPath`
+- `SchemaServiceApi.Method.encodeRequest(...)`
+- `SchemaServiceApi.Method.decodeResponse(...)`
 
 ## Usage
 

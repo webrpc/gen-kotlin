@@ -276,7 +276,7 @@ fun decodeWebRpcError(
 // endregion
 
 // region Service Metadata
-object ExampleServiceApi {
+object NodeTsExampleServiceApi {
     const val basePath: String = "/v1/ExampleService"
 
     object Ping {
@@ -320,7 +320,7 @@ object ExampleServiceApi {
     }
 }
 
-class ExampleServiceClient(
+class NodeTsExampleServiceClient(
     private val baseUrl: String,
     private val transport: WebRpcTransport,
     private val json: Json = WebRpcJson,
@@ -331,28 +331,28 @@ class ExampleServiceClient(
     suspend fun ping() {
         return executeWebRpc(
             baseUrl = baseUrl,
-            urlPath = ExampleServiceApi.Ping.urlPath,
-            body = ExampleServiceApi.Ping.encodeRequest(json),
+            urlPath = NodeTsExampleServiceApi.Ping.urlPath,
+            body = NodeTsExampleServiceApi.Ping.encodeRequest(json),
             transport = transport,
             headers = headers(),
             json = json,
             decodeSuccess = { body, decodeJson ->
-                ExampleServiceApi.Ping.decodeResponse(body, decodeJson)
+                NodeTsExampleServiceApi.Ping.decodeResponse(body, decodeJson)
             },
         )
     }
 
     @Throws(WebRpcError::class, WebRpcTransportException::class)
-    suspend fun getUser(request:ExampleServiceApi.GetUser.Request): ExampleServiceApi.GetUser.Response {
+    suspend fun getUser(request:NodeTsExampleServiceApi.GetUser.Request): NodeTsExampleServiceApi.GetUser.Response {
         return executeWebRpc(
             baseUrl = baseUrl,
-            urlPath = ExampleServiceApi.GetUser.urlPath,
-            body = ExampleServiceApi.GetUser.encodeRequest(request, json),
+            urlPath = NodeTsExampleServiceApi.GetUser.urlPath,
+            body = NodeTsExampleServiceApi.GetUser.encodeRequest(request, json),
             transport = transport,
             headers = headers(),
             json = json,
             decodeSuccess = { body, decodeJson ->
-                ExampleServiceApi.GetUser.decodeResponse(body, decodeJson)
+                NodeTsExampleServiceApi.GetUser.decodeResponse(body, decodeJson)
             },
         )
     }

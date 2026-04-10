@@ -209,13 +209,31 @@ struct WalletServiceClient
 struct WalletWebRpcClient
   - id: uint64
 
+struct CollideWalletApi
+  - id: uint64
+
+struct CollideWalletServiceApi
+  - id: uint64
+
+struct CollideWalletWebRpcApi
+  - id: uint64
+
+struct CollideWalletClient
+  - id: uint64
+
+struct CollideWalletServiceClient
+  - id: uint64
+
+struct CollideWalletWebRpcClient
+  - id: uint64
+
 service Wallet
   - Ping()
 `
 
 	output := generateKotlin(t, schema)
-	requireContains(t, output, "object WalletGeneratedRpcApi")
-	requireContains(t, output, "class WalletGeneratedRpcClient(")
+	requireContains(t, output, "object CollideWalletGeneratedRpcApi")
+	requireContains(t, output, "class CollideWalletGeneratedRpcClient(")
 
 	project := writeGradleProject(t, "service-collision", map[string]string{
 		"src/main/kotlin/CollideClient.kt": output,
@@ -225,6 +243,40 @@ service Wallet
 	})
 
 	runGradle(t, project, "compileKotlin")
+}
+
+func TestSchemaAwareServiceNaming(t *testing.T) {
+	waasSchema := `
+webrpc = v1
+
+name = waas
+version = v1.0.0
+basepath = /rpc
+
+service Wallet
+  - Ping()
+`
+
+	waasOutput := generateKotlin(t, waasSchema)
+	requireContains(t, waasOutput, "object WaasWalletApi")
+	requireContains(t, waasOutput, "class WaasWalletClient(")
+	requireContains(t, waasOutput, `const val basePath: String = "/rpc/Wallet"`)
+
+	testSchema := `
+webrpc = v1
+
+name = Test
+version = v1.0.0
+basepath = /rpc
+
+service TestApi
+  - Ping()
+`
+
+	testOutput := generateKotlin(t, testSchema)
+	requireContains(t, testOutput, "object TestApi")
+	requireContains(t, testOutput, "class TestApiClient(")
+	requireNotContains(t, testOutput, "TestTestApi")
 }
 
 type gradleDeps struct {

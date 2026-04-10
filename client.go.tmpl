@@ -1,14 +1,17 @@
 {{define "client"}}
 
 {{- $basepath := .BasePath -}}
+{{- $schemaName := .SchemaName -}}
+{{- $schemaPrefix := pascalCase $schemaName -}}
 {{- $typeMap := .TypeMap -}}
 {{- $types := .Types -}}
 
 {{- if .Services -}}
 // region Service Metadata
 {{ range $_, $service := .Services}}
+{{- $serviceBaseName := ternary (hasPrefix $service.Name $schemaPrefix) $service.Name (printf "%s%s" $schemaPrefix $service.Name) -}}
 {{- $serviceApiState := dict "name" "" "selected" false -}}
-{{- range $_, $candidate := (list (printf "%sApi" $service.Name) (printf "%sServiceApi" $service.Name) (printf "%sWebRpcApi" $service.Name) (printf "%sGeneratedRpcApi" $service.Name)) -}}
+{{- range $_, $candidate := (list (printf "%sApi" $serviceBaseName) (printf "%sServiceApi" $serviceBaseName) (printf "%sWebRpcApi" $serviceBaseName) (printf "%sGeneratedRpcApi" $serviceBaseName)) -}}
     {{- if not (get $serviceApiState "selected") -}}
         {{- $collisionState := dict "collision" false -}}
         {{- range $_, $type := $types -}}
@@ -24,7 +27,7 @@
 {{- end }}
 {{- $serviceApiName := get $serviceApiState "name" -}}
 {{- $serviceClientState := dict "name" "" "selected" false -}}
-{{- range $_, $candidate := (list (printf "%sClient" $service.Name) (printf "%sServiceClient" $service.Name) (printf "%sWebRpcClient" $service.Name) (printf "%sGeneratedRpcClient" $service.Name)) -}}
+{{- range $_, $candidate := (list (printf "%sClient" $serviceBaseName) (printf "%sServiceClient" $serviceBaseName) (printf "%sWebRpcClient" $serviceBaseName) (printf "%sGeneratedRpcClient" $serviceBaseName)) -}}
     {{- if not (get $serviceClientState "selected") -}}
         {{- $collisionState := dict "collision" false -}}
         {{- range $_, $type := $types -}}
