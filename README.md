@@ -11,8 +11,9 @@ provided schema. This client is compatible with any webrpc server language (ie. 
 
 ## Dependencies
 
-In order to support communication with server, dependencies to few libraries must be provided.
-This is a dependency of the generated code, so you must add it to your project.
+Generated clients depend on `kotlinx.coroutines` and
+`kotlinx.serialization`. Add these to the project that consumes the generated
+file.
 
 Add this to `build.gradle.kts`:
 ```kotlin
@@ -47,6 +48,9 @@ dependencies {
 }
 ```
 
+The sample client project in `_examples/ClientExample/client` and the test
+harness in `Tests` use Kotlin `1.8.21` on JVM `11`.
+
 Generated output also exposes low-level method helpers for custom flows:
 
 - schema-aware service symbols, for example `WaasWalletApi` / `WaasWalletClient`
@@ -58,31 +62,40 @@ Generated output also exposes low-level method helpers for custom flows:
 
 ## Usage
 
+The built-in target is the simplest option:
+
 ```
 webrpc-gen -schema=example.ridl -target=kotlin -client -out=./example.gen.kt
 ```
 
-or 
+If you want to load this generator from git instead of the built-in target, use
+an explicit git ref:
 
 ```
-webrpc-gen -schema=example.ridl -target=github.com/webrpc/gen-kotlin@latest -client -out=./example.gen.kt
+webrpc-gen -schema=example.ridl -target=github.com/webrpc/gen-kotlin@tags/v0.3.0 -client -out=./example.gen.kt
 ```
 
-or
+You can also point `-target` at a local folder:
 
 ```
 webrpc-gen -schema=example.ridl -target=./local-templates-on-disk -client -out=./example.gen.kt
 ```
 
-As you can see, the `-target` supports default `kotlin`, any git URI, or a local folder :)
+As you can see, `-target` supports the built-in `kotlin` target, a git URI, or
+a local folder.
 
 ## Tooling
 
-This repo pins the published webrpc tool module in `tools/go.mod` using Go tool dependencies:
+This repo pins the published webrpc tool module in `tools/go.mod` using Go tool
+dependencies. Using the pinned tools from this repo requires Go `1.24+`.
 
-- `github.com/webrpc/webrpc v0.37.1`
+Pinned tool versions:
+
+- `github.com/webrpc/webrpc v0.37.2`
 - `tool github.com/webrpc/webrpc/cmd/webrpc-gen`
 - `tool github.com/webrpc/webrpc/cmd/webrpc-test`
+
+The generator itself currently supports WebRPC schema version `v1`.
 
 Use the pinned tools from this repo with:
 
@@ -97,8 +110,19 @@ To update both to the latest published version and write that version back into 
 go -C tools get -tool github.com/webrpc/webrpc/cmd/webrpc-gen@latest github.com/webrpc/webrpc/cmd/webrpc-test@latest
 ```
 
-### Set custom template variables
-Change any of the following values by passing `-option="Value"` CLI flag to `webrpc-gen`.
+## Development
+
+Repository checks I verified while updating this README:
+
+```sh
+go test ./...
+make -C _examples/ClientExample generate
+```
+
+### Target options
+
+Change any of the following values by passing the target option to
+`webrpc-gen`.
 
 | webrpc-gen -option              | Description                | Default value              |
 |---------------------------------|----------------------------|----------------------------|
@@ -108,4 +132,4 @@ Change any of the following values by passing `-option="Value"` CLI flag to `web
 
 ## LICENSE
 
-[MIT LICENSE](./LICENSE)
+[MIT LICENSE](./LICENSE.md)

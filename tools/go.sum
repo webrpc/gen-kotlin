@@ -217,12 +217,16 @@ github.com/webrpc/gen-javascript v0.14.0 h1:pnXUi0x2l9e+XnK4PKhlAe7bGAs1WRZHV4bN
 github.com/webrpc/gen-javascript v0.14.0/go.mod h1:5EhapSJgzbiWrIGlqzZN9Lg9mE9209wwX+Du2dgn4EU=
 github.com/webrpc/gen-kotlin v0.2.0 h1:sSGCWx26dBeFxSrevr62QnNsw4WplJ69mWSuffQKEaQ=
 github.com/webrpc/gen-kotlin v0.2.0/go.mod h1:PIPys9Gn1Ro7q7uoacydEX8CtqBlAJSV98A++tdj4ak=
+github.com/webrpc/gen-kotlin v0.3.0 h1:Kd4lANFWoF5xJfPLzpaaHpmJHiTfrcc5/Z+UIdYa3zM=
+github.com/webrpc/gen-kotlin v0.3.0/go.mod h1:tPuW8Ys0tqgUdUjAaVCDufhvV5IExsKBl/iVOj9/A34=
 github.com/webrpc/gen-openapi v0.18.0 h1:1DpmGgiWWG+ON8KXhUIrmdac63vTfxIA4sT79bpq/kc=
 github.com/webrpc/gen-openapi v0.18.0/go.mod h1:fwY3ylZmdiCr+WXjR8Ek8wm08CFRr2/GaXI7Zd/Ou4Y=
 github.com/webrpc/gen-typescript v0.26.0 h1:qT81nmNFS0jEn4dbj+J1YXmgIncFw66SwpNBUetU1/s=
 github.com/webrpc/gen-typescript v0.26.0/go.mod h1:XDW2lL0Ft7Mdf12wcj8STdvuV24k2L/vGY49Ag2M4Lw=
 github.com/webrpc/webrpc v0.37.1 h1:fIe3lye2WAj/F4Okg97fO0p5O5ooLdsIQsX5w1FuGZg=
 github.com/webrpc/webrpc v0.37.1/go.mod h1:73cCfM+tINExOPbQNCxGt0MdIdC/UrqEeF34hhXnflI=
+github.com/webrpc/webrpc v0.37.2 h1:t4wHYkpIuGCK4Y01Kto3g6sok144W82Gx7R86f4iJbk=
+github.com/webrpc/webrpc v0.37.2/go.mod h1:WUd0sAvitYnwa86c62oIC/Zd/BlIWSR9902YZDqVPrM=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
