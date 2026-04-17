@@ -72,7 +72,7 @@ If you want to load this generator from git instead of the built-in target, use
 an explicit git ref:
 
 ```
-webrpc-gen -schema=example.ridl -target=github.com/webrpc/gen-kotlin@tags/v0.3.0 -client -out=./example.gen.kt
+webrpc-gen -schema=example.ridl -target=github.com/webrpc/gen-kotlin@tags/v0.3.1 -client -out=./example.gen.kt
 ```
 
 You can also point `-target` at a local folder:
