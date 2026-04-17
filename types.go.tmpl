@@ -11,7 +11,7 @@
 @Serializable(with = {{$type.Name}}Serializer::class)
 enum class {{$type.Name}}(val wireValue: String) {
 {{- range $_, $field := $type.Fields}}
-    {{$field.Name}}("{{$field.Name}}"),
+    {{$field.Name}}("{{$field.Value}}"),
 {{- end}}
     UNKNOWN_DEFAULT("UNKNOWN_DEFAULT");
 

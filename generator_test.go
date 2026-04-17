@@ -155,6 +155,69 @@ class HelperApiRuntimeTest {
 	runGradle(t, project, "test")
 }
 
+func TestEnumWireValuesRuntime(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = EnumWire
+version = v1.0.0
+basepath = /rpc
+
+enum WalletType: string
+  - Ethereum = "ethereum"
+  - SmartWallet = "smart-wallet"
+
+struct EchoRequest
+  - walletType: WalletType
+
+struct EchoResponse
+  - walletType: WalletType
+
+service EnumWire
+  - Echo(EchoRequest) => (EchoResponse)
+`
+
+	output := generateKotlin(t, schema)
+	requireContains(t, output, `Ethereum("ethereum")`)
+	requireContains(t, output, `SmartWallet("smart-wallet")`)
+
+	project := writeGradleProject(t, "enum-wire-values", map[string]string{
+		"src/main/kotlin/EnumWireClient.kt": output,
+		"src/test/kotlin/EnumWireValuesRuntimeTest.kt": `
+import io.webrpc.client.EnumWireApi
+import io.webrpc.client.EchoRequest
+import io.webrpc.client.WalletType
+import io.webrpc.client.WalletTypeSerializer
+import kotlinx.serialization.json.Json
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class EnumWireValuesRuntimeTest {
+    @Test
+    fun explicitEnumWireValuesRoundTrip() {
+        val request = EchoRequest(walletType = WalletType.Ethereum)
+        val body = EnumWireApi.Echo.encodeRequest(request)
+        assertEquals("""{"walletType":"ethereum"}""", body)
+
+        val response = EnumWireApi.Echo.decodeResponse("""{"walletType":"smart-wallet"}""")
+        assertEquals(WalletType.SmartWallet, response.walletType)
+    }
+
+    @Test
+    fun unknownEnumWireValueFallsBack() {
+        val decoded = Json.decodeFromString(WalletTypeSerializer, "\"unexpected\"")
+        assertEquals(WalletType.UNKNOWN_DEFAULT, decoded)
+    }
+}
+`,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "test")
+}
+
 func TestNullOptionalGeneration(t *testing.T) {
 	schema := `
 webrpc = v1
