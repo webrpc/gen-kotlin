@@ -297,6 +297,81 @@ service Nulls
 	runGradle(t, project, "compileKotlin")
 }
 
+func TestBigIntStringGenerationRuntime(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = BigAmounts
+version = v1.0.0
+basepath = /rpc
+
+struct Amounts
+  - amount: bigint
+  - optionalAmount?: bigint
+  - amounts: []bigint
+
+service BigAmounts
+  - Echo(Amounts) => (Amounts)
+  - Sum(amount: bigint, amounts: []bigint) => (total?: bigint)
+`
+
+	output := generateKotlin(t, schema)
+	requireRegexp(t, `val amount:\s*String`, output)
+	requireRegexp(t, `val optionalAmount:\s*String\? = null`, output)
+	requireRegexp(t, `val amounts:\s*List<String>`, output)
+	requireRegexp(t, `val total:\s*String\? = null`, output)
+
+	project := writeGradleProject(t, "bigint-string", map[string]string{
+		"src/main/kotlin/BigAmountsClient.kt": output,
+		"src/test/kotlin/BigIntStringRuntimeTest.kt": `
+import io.webrpc.client.Amounts
+import io.webrpc.client.BigAmountsApi
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class BigIntStringRuntimeTest {
+    @Test
+    fun bigintFieldsUseDecimalStringsOnTheWire() {
+        val request = Amounts(
+            amount = "123456789012345678901234567890",
+            optionalAmount = "42",
+            amounts = listOf("1", "999999999999999999999999999999"),
+        )
+
+        assertEquals(
+            """{"amount":"123456789012345678901234567890","optionalAmount":"42","amounts":["1","999999999999999999999999999999"]}""",
+            BigAmountsApi.Echo.encodeRequest(request),
+        )
+
+        val echoed = BigAmountsApi.Echo.decodeResponse(
+            """{"amount":"123456789012345678901234567890","optionalAmount":"42","amounts":["1","999999999999999999999999999999"]}""",
+        )
+        assertEquals("123456789012345678901234567890", echoed.amount)
+        assertEquals("42", echoed.optionalAmount)
+        assertEquals(listOf("1", "999999999999999999999999999999"), echoed.amounts)
+
+        val sumRequest = BigAmountsApi.Sum.Request(
+            amount = "123456789012345678901234567890",
+            amounts = listOf("10", "20"),
+        )
+        assertEquals(
+            """{"amount":"123456789012345678901234567890","amounts":["10","20"]}""",
+            BigAmountsApi.Sum.encodeRequest(sumRequest),
+        )
+
+        val sum = BigAmountsApi.Sum.decodeResponse("""{"total":"123456789012345678901234567920"}""")
+        assertEquals("123456789012345678901234567920", sum.total)
+    }
+}
+`,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "test")
+}
+
 func TestMethodNamespaceTypeCollisionGeneration(t *testing.T) {
 	schema := `
 webrpc = v1
