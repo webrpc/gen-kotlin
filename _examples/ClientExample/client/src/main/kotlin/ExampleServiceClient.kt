@@ -46,7 +46,6 @@ typealias Username = String
 typealias Age = UInt
 
 
-
 @Serializable(with = KindSerializer::class)
 enum class Kind(val wireValue: String) {
     USER("USER"),
@@ -280,6 +279,7 @@ fun decodeWebRpcError(
 object NodeTsExampleServiceApi {
     const val basePath: String = "/v1/ExampleService"
 
+
     object Ping {
         const val path: String = "/Ping"
         const val urlPath: String = "/v1/ExampleService/Ping"
@@ -304,6 +304,7 @@ object NodeTsExampleServiceApi {
             val userId: ULong,
         )
 
+
         @Serializable
         data class Response(
             @SerialName("code")
@@ -311,6 +312,7 @@ object NodeTsExampleServiceApi {
             @SerialName("user")
             val user: User,
         )
+
         fun encodeRequest(request: Request, json: Json = WebRpcJson): String {
             return json.encodeToString(request)
         }

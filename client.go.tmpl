@@ -128,8 +128,7 @@ object {{$serviceApiName}} {
         {{- end }}
 
         @Serializable
-        {{ if get $requestHasExportableFields "value" -}}
-        data class Request(
+{{ if get $requestHasExportableFields "value" }}        data class Request(
             {{- range $_, $field := $method.Inputs}}
                 {{- $isExportable := true -}}
                 {{- range $meta := $field.Meta -}}
@@ -145,9 +144,8 @@ object {{$serviceApiName}} {
                 {{- end -}}
             {{- end}}
         )
-        {{ else -}}
-        class Request
-        {{ end -}}
+{{ else }}        class Request
+{{ end -}}
         {{- end }}
         {{- if and (not $method.Succinct) (gt (len $method.Outputs) 0) }}
         {{- $responseHasExportableFields := dict "value" false -}}
@@ -166,8 +164,7 @@ object {{$serviceApiName}} {
         {{- end }}
 
         @Serializable
-        {{ if get $responseHasExportableFields "value" -}}
-        data class Response(
+{{ if get $responseHasExportableFields "value" }}        data class Response(
             {{- range $_, $field := $method.Outputs}}
                 {{- $isExportable := true -}}
                 {{- range $meta := $field.Meta -}}
@@ -183,9 +180,8 @@ object {{$serviceApiName}} {
                 {{- end -}}
             {{- end}}
         )
-        {{ else -}}
-        class Response
-        {{ end -}}
+{{ else }}        class Response
+{{ end -}}
         {{- end }}
 
         {{- if eq (len $method.Inputs) 0 }}

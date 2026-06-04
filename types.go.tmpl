@@ -91,8 +91,7 @@ typealias {{$type.Name}} = {{template "type" dict "Type" $type.Type "TypeMap" $t
     {{- end -}}
 {{- end }}
 @Serializable
-{{ if get $structHasExportableFields "value" -}}
-data class {{$type.Name}}(
+{{ if get $structHasExportableFields "value" }}data class {{$type.Name}}(
     {{- range $_, $field := $type.Fields}}
 
     {{- $isExportable := true -}}
@@ -110,8 +109,7 @@ data class {{$type.Name}}(
     {{- end -}}
     {{- end}}
 )
-{{ else -}}
-class {{$type.Name}}
+{{ else }}class {{$type.Name}}
 {{ end -}}
 {{end}}{{end}}
 {{end}}
