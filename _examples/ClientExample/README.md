@@ -13,3 +13,6 @@ example of generating a webrpc client from [service.ridl](./service.ridl) schema
 3. $ `make generate` -- generates both server and client code via the pinned tool module in `../../tools`
 4. $ `make run-server`
 5. $ `make run-client`
+
+The schema includes representative cases for generated enum fallback naming,
+method/type name collisions, and fields excluded with `json = -`.

@@ -7,6 +7,7 @@ basepath = /v1
 service ExampleService
   - Ping() => ()
   - GetUser(userID: uint64) => (code: uint32, user: User)
+  - RuntimeStatus() => (status: RuntimeStatus)
 
 type Username: string
 type Age: uint32
@@ -30,6 +31,11 @@ struct User
 enum Kind: uint32
   - USER
   - ADMIN
+  - UNKNOWN_DEFAULT
 
 struct Page
   - num: uint32
+
+struct RuntimeStatus
+  - healthy: bool
+  - version: string

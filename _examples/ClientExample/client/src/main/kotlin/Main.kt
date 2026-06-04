@@ -17,5 +17,8 @@ fun main() = runBlocking {
     )
     println(response)
 
+    println("Checking runtime status...")
+    println(client.runtimeStatus())
+
     println("Done.")
 }

@@ -32,6 +32,13 @@ const exampleServiceApp = createExampleServiceApp({
 			createdAt: new Date().toISOString(),
 		},
 	}),
+
+	RuntimeStatus: () => ({
+		status: {
+			healthy: true,
+			version: 'v1.0.0',
+		},
+	}),
 })
 
 app.use(exampleServiceApp)
