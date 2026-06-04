@@ -218,6 +218,57 @@ class EnumWireValuesRuntimeTest {
 	runGradle(t, project, "test")
 }
 
+func TestEnumFallbackNameCollisionRuntime(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = EnumFallback
+version = v1.0.0
+basepath = /rpc
+
+enum State: string
+  - UNKNOWN_DEFAULT = "schema-default"
+  - Ready = "ready"
+
+struct EchoState
+  - state: State
+
+service EnumFallback
+  - Echo(EchoState) => (EchoState)
+`
+
+	output := generateKotlin(t, schema)
+	requireContains(t, output, `UNKNOWN_DEFAULT("schema-default")`)
+	requireContains(t, output, `UNKNOWN_DEFAULT_FALLBACK("UNKNOWN_DEFAULT")`)
+
+	project := writeGradleProject(t, "enum-fallback-collision", map[string]string{
+		"src/main/kotlin/EnumFallbackClient.kt": output,
+		"src/test/kotlin/EnumFallbackRuntimeTest.kt": `
+import io.webrpc.client.State
+import io.webrpc.client.StateSerializer
+import kotlinx.serialization.json.Json
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class EnumFallbackRuntimeTest {
+    @Test
+    fun schemaEntryAndGeneratedFallbackAreBothAvailable() {
+        val schemaDefault = Json.decodeFromString(StateSerializer, "\"schema-default\"")
+        assertEquals(State.UNKNOWN_DEFAULT, schemaDefault)
+
+        val decoded = Json.decodeFromString(StateSerializer, "\"unexpected\"")
+        assertEquals(State.UNKNOWN_DEFAULT_FALLBACK, decoded)
+    }
+}
+`,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "test")
+}
+
 func TestNullOptionalGeneration(t *testing.T) {
 	schema := `
 webrpc = v1
@@ -238,6 +289,160 @@ service Nulls
 
 	project := writeGradleProject(t, "null-optional", map[string]string{
 		"src/main/kotlin/NullsClient.kt": output,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "compileKotlin")
+}
+
+func TestBigIntStringGenerationRuntime(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = BigAmounts
+version = v1.0.0
+basepath = /rpc
+
+struct Amounts
+  - amount: bigint
+  - optionalAmount?: bigint
+  - amounts: []bigint
+
+service BigAmounts
+  - Echo(Amounts) => (Amounts)
+  - Sum(amount: bigint, amounts: []bigint) => (total?: bigint)
+`
+
+	output := generateKotlin(t, schema)
+	requireRegexp(t, `val amount:\s*String`, output)
+	requireRegexp(t, `val optionalAmount:\s*String\? = null`, output)
+	requireRegexp(t, `val amounts:\s*List<String>`, output)
+	requireRegexp(t, `val total:\s*String\? = null`, output)
+
+	project := writeGradleProject(t, "bigint-string", map[string]string{
+		"src/main/kotlin/BigAmountsClient.kt": output,
+		"src/test/kotlin/BigIntStringRuntimeTest.kt": `
+import io.webrpc.client.Amounts
+import io.webrpc.client.BigAmountsApi
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class BigIntStringRuntimeTest {
+    @Test
+    fun bigintFieldsUseDecimalStringsOnTheWire() {
+        val request = Amounts(
+            amount = "123456789012345678901234567890",
+            optionalAmount = "42",
+            amounts = listOf("1", "999999999999999999999999999999"),
+        )
+
+        assertEquals(
+            """{"amount":"123456789012345678901234567890","optionalAmount":"42","amounts":["1","999999999999999999999999999999"]}""",
+            BigAmountsApi.Echo.encodeRequest(request),
+        )
+
+        val echoed = BigAmountsApi.Echo.decodeResponse(
+            """{"amount":"123456789012345678901234567890","optionalAmount":"42","amounts":["1","999999999999999999999999999999"]}""",
+        )
+        assertEquals("123456789012345678901234567890", echoed.amount)
+        assertEquals("42", echoed.optionalAmount)
+        assertEquals(listOf("1", "999999999999999999999999999999"), echoed.amounts)
+
+        val sumRequest = BigAmountsApi.Sum.Request(
+            amount = "123456789012345678901234567890",
+            amounts = listOf("10", "20"),
+        )
+        assertEquals(
+            """{"amount":"123456789012345678901234567890","amounts":["10","20"]}""",
+            BigAmountsApi.Sum.encodeRequest(sumRequest),
+        )
+
+        val sum = BigAmountsApi.Sum.decodeResponse("""{"total":"123456789012345678901234567920"}""")
+        assertEquals("123456789012345678901234567920", sum.total)
+    }
+}
+`,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "test")
+}
+
+func TestMethodNamespaceTypeCollisionGeneration(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = Runtime
+version = v1.0.0
+basepath = /rpc
+
+struct RuntimeStatus
+  - healthy: bool
+
+service Runtime
+  - RuntimeStatus() => (status: RuntimeStatus)
+`
+
+	output := generateKotlin(t, schema)
+	requireContains(t, output, "object RuntimeStatusMethod")
+	requireNotContains(t, output, "object RuntimeStatus {")
+	requireRegexp(t, `val status:\s*RuntimeStatus`, output)
+	requireRegexp(t, `suspend fun runtimeStatus\(\):\s*RuntimeApi\.RuntimeStatusMethod\.Response`, output)
+	requireContains(t, output, "urlPath = RuntimeApi.RuntimeStatusMethod.urlPath")
+	requireContains(t, output, `const val urlPath: String = "/rpc/Runtime/RuntimeStatus"`)
+
+	project := writeGradleProject(t, "method-type-collision", map[string]string{
+		"src/main/kotlin/RuntimeClient.kt": output,
+		"src/test/kotlin/RuntimeMethodCollisionTest.kt": `
+import io.webrpc.client.RuntimeApi
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class RuntimeMethodCollisionTest {
+    @Test
+    fun methodNamespaceDoesNotShadowTopLevelDto() {
+        val response = RuntimeApi.RuntimeStatusMethod.decodeResponse("""{"status":{"healthy":true}}""")
+        assertEquals(true, response.status.healthy)
+        assertEquals("/rpc/Runtime/RuntimeStatus", RuntimeApi.RuntimeStatusMethod.urlPath)
+    }
+}
+`,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "test")
+}
+
+func TestMethodNamespaceNumericFallbackGeneration(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = Runtime
+version = v1.0.0
+basepath = /rpc
+
+struct RuntimeStatus
+  - value: string
+
+struct RuntimeStatusMethod
+  - value: string
+
+service Runtime
+  - RuntimeStatus() => (status: RuntimeStatus)
+`
+
+	output := generateKotlin(t, schema)
+	requireContains(t, output, "object RuntimeStatusMethod1")
+	requireRegexp(t, `suspend fun runtimeStatus\(\):\s*RuntimeApi\.RuntimeStatusMethod1\.Response`, output)
+
+	project := writeGradleProject(t, "method-namespace-numeric-fallback", map[string]string{
+		"src/main/kotlin/RuntimeClient.kt": output,
 	}, gradleDeps{
 		withCoroutines:    true,
 		withSerialization: true,
@@ -299,6 +504,56 @@ service Wallet
 	requireContains(t, output, "class CollideWalletGeneratedRpcClient(")
 
 	project := writeGradleProject(t, "service-collision", map[string]string{
+		"src/main/kotlin/CollideClient.kt": output,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "compileKotlin")
+}
+
+func TestServiceNameCollisionNumericFallbackGeneration(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = Collide
+version = v1.0.0
+basepath = /rpc
+
+struct CollideWalletApi
+  - id: uint64
+
+struct CollideWalletServiceApi
+  - id: uint64
+
+struct CollideWalletWebRpcApi
+  - id: uint64
+
+struct CollideWalletGeneratedRpcApi
+  - id: uint64
+
+struct CollideWalletClient
+  - id: uint64
+
+struct CollideWalletServiceClient
+  - id: uint64
+
+struct CollideWalletWebRpcClient
+  - id: uint64
+
+struct CollideWalletGeneratedRpcClient
+  - id: uint64
+
+service Wallet
+  - Ping()
+`
+
+	output := generateKotlin(t, schema)
+	requireContains(t, output, "object CollideWalletGeneratedRpcApi1")
+	requireContains(t, output, "class CollideWalletGeneratedRpcClient1(")
+
+	project := writeGradleProject(t, "service-collision-numeric-fallback", map[string]string{
 		"src/main/kotlin/CollideClient.kt": output,
 	}, gradleDeps{
 		withCoroutines:    true,
@@ -374,6 +629,93 @@ service Baz
 	runGradle(t, project, "compileKotlin")
 }
 
+func TestEmptyExportedClassesRuntime(t *testing.T) {
+	schema := `{
+  "webrpc": "v1",
+  "name": "EmptyExported",
+  "version": "v1.0.0",
+  "basepath": "/rpc",
+  "types": [
+    {
+      "kind": "struct",
+      "name": "HiddenStruct",
+      "fields": [
+        {
+          "name": "secret",
+          "type": "string",
+          "meta": [
+            { "json": "-" }
+          ]
+        }
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "EmptyExported",
+      "methods": [
+        {
+          "name": "Hidden",
+          "annotations": {},
+          "inputs": [
+            {
+              "name": "secret",
+              "type": "string",
+              "meta": [
+                { "json": "-" }
+              ]
+            }
+          ],
+          "outputs": [
+            {
+              "name": "token",
+              "type": "string",
+              "meta": [
+                { "json": "-" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}`
+
+	output := generateKotlin(t, schema)
+	requireContains(t, output, "@Serializable\nclass HiddenStruct")
+	requireContains(t, output, "@Serializable\n        class Request")
+	requireContains(t, output, "@Serializable\n        class Response")
+	requireNotContains(t, output, "data class HiddenStruct(")
+	requireNotContains(t, output, "data class Request(")
+	requireNotContains(t, output, "data class Response(")
+
+	project := writeGradleProject(t, "empty-exported-classes", map[string]string{
+		"src/main/kotlin/EmptyExportedClient.kt": output,
+		"src/test/kotlin/EmptyExportedRuntimeTest.kt": `
+import io.webrpc.client.EmptyExportedApi
+import io.webrpc.client.HiddenStruct
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class EmptyExportedRuntimeTest {
+    @Test
+    fun emptyExportedShapesEncodeAsEmptyJsonObjects() {
+        assertEquals("{}", Json.encodeToString(HiddenStruct()))
+        assertEquals("{}", EmptyExportedApi.Hidden.encodeRequest(EmptyExportedApi.Hidden.Request()))
+        EmptyExportedApi.Hidden.decodeResponse("{}")
+    }
+}
+`,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "test")
+}
+
 func TestCrossServiceSchemaAwareNameCollisionGeneration(t *testing.T) {
 	schema := `
 webrpc = v1
@@ -415,7 +757,11 @@ func generateKotlin(t *testing.T, schema string, extraArgs ...string) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	schemaPath := filepath.Join(dir, "schema.ridl")
+	schemaExt := ".ridl"
+	if strings.HasPrefix(strings.TrimSpace(schema), "{") {
+		schemaExt = ".json"
+	}
+	schemaPath := filepath.Join(dir, "schema"+schemaExt)
 	outPath := filepath.Join(dir, "Client.kt")
 
 	if err := os.WriteFile(schemaPath, []byte(strings.TrimSpace(schema)+"\n"), 0o644); err != nil {
