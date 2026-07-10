@@ -128,7 +128,7 @@ Change any of the following values by passing the target option to
 |---------------------------------|----------------------------|----------------------------|
 | `-client`                       | generate client code       | unset (`false`)            |
 | `-okhttpTransport=%bool%`       | include optional OkHttp transport | `false`            |
-| `-packageName=%package name%`   | define package name        | `io.webrpc.client`         |
+| `-packageName=%package name%`   | define the generated package name | `io.webrpc.client` |
 
 ## LICENSE
 

@@ -89,6 +89,47 @@ service Transport
 	runGradle(t, okhttpProject, "compileKotlin")
 }
 
+func TestCustomPackageNameGeneration(t *testing.T) {
+	schema := `
+webrpc = v1
+
+name = PackageName
+version = v1.0.0
+basepath = /rpc
+
+struct EchoResponse
+  - message: string
+
+service PackageName
+  - Echo() => (response: EchoResponse)
+`
+
+	const packageName = "technology.polygon.omswallet.internal.generated.waas"
+	output := generateKotlin(t, schema, "-packageName="+packageName)
+	requireContains(t, output, "package "+packageName)
+
+	project := writeGradleProject(t, "custom-package-name", map[string]string{
+		"src/main/kotlin/PackageNameClient.kt": output,
+		"src/test/kotlin/CustomPackageNameTest.kt": `
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import technology.polygon.omswallet.internal.generated.waas.EchoResponse
+
+class CustomPackageNameTest {
+    @Test
+    fun generatedTypesAreAvailableFromTheConfiguredPackage() {
+        assertEquals("ok", EchoResponse(message = "ok").message)
+    }
+}
+`,
+	}, gradleDeps{
+		withCoroutines:    true,
+		withSerialization: true,
+	})
+
+	runGradle(t, project, "test")
+}
+
 func TestHelperApiRuntime(t *testing.T) {
 	schema := `
 webrpc = v1
